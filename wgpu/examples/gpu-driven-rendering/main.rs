@@ -9,7 +9,7 @@ use wgpu::util::DeviceExt;
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct Vertex {
     _pos: [f32; 4],
-    _tex_coord: [f32; 2], // texture coordinates
+    _tex_coord: [f32; 2],
 }
 
 fn vertex(pos: [i8; 3], tc: [i8; 2]) -> Vertex {
@@ -63,6 +63,24 @@ fn create_vertices() -> (Vec<Vertex>, Vec<u16>) {
     ];
 
     (vertex_data.to_vec(), index_data.to_vec())
+}
+
+fn create_texels(size: usize) -> Vec<u8> {
+    (0..size * size)
+        .map(|id| {
+            // get high five for recognizing this ;)
+            let cx = 3.0 * (id % size) as f32 / (size - 1) as f32 - 2.0;
+            let cy = 2.0 * (id / size) as f32 / (size - 1) as f32 - 1.0;
+            let (mut x, mut y, mut count) = (cx, cy, 0);
+            while count < 0xFF && x * x + y * y < 4.0 {
+                let old_x = x;
+                x = x * x - y * y + cx;
+                y = 2.0 * old_x * y + cy;
+                count += 1;
+            }
+            count
+        })
+        .collect()
 }
 
 /// A wrapper for `pop_error_scope` futures that panics if an error occurs.
@@ -167,6 +185,35 @@ impl framework::Example for Example {
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
+
+        // Create the texture
+        let size = 256u32;
+        let texels = create_texels(size as usize);
+        let texture_extent = wgpu::Extent3d {
+            width: size,
+            height: size,
+            depth_or_array_layers: 1,
+        };
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size: texture_extent,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::R8Uint,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        });
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        queue.write_texture(
+            texture.as_image_copy(),
+            &texels,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(std::num::NonZeroU32::new(size).unwrap()),
+                rows_per_image: None,
+            },
+            texture_extent,
+        );
 
         // Create other resources
         let mx_total = Self::generate_matrix(config.width as f32 / config.height as f32);
