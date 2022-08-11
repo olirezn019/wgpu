@@ -48,6 +48,10 @@ name = "cube"
 test = true
 
 [[example]]
+name = "gpu-driven-rendering"
+test = true
+
+[[example]]
 name = "hello-compute"
 test = true
 
