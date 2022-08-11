@@ -9,7 +9,7 @@ use wgpu::util::DeviceExt;
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct Vertex {
     _pos: [f32; 4],
-    _tex_coord: [f32; 2],
+    _tex_coord: [f32; 2], // _color: [f32; 4],
 }
 
 fn vertex(pos: [i8; 3], tc: [i8; 2]) -> Vertex {
@@ -178,6 +178,16 @@ impl framework::Example for Example {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(4*4),
+                    },
+                    count: None,
+                },
             ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -224,6 +234,14 @@ impl framework::Example for Example {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        // Create cube color
+        let color: &[f32; 4] = &[0.0, 0.0, 0.5, 1.0];
+        let color_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform Buffer"),
+            contents: bytemuck::cast_slice(color),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
         // Create bind group
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &bind_group_layout,
@@ -235,6 +253,10 @@ impl framework::Example for Example {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::TextureView(&texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: color_buf.as_entire_binding(),
                 },
             ],
             label: None,
@@ -387,10 +409,6 @@ impl framework::Example for Example {
             rpass.pop_debug_group();
             rpass.insert_debug_marker("Draw!");
             rpass.draw_indexed(0..self.index_count as u32, 0, 0..1);
-            if let Some(ref pipe) = self.pipeline_wire {
-                rpass.set_pipeline(pipe);
-                rpass.draw_indexed(0..self.index_count as u32, 0, 0..1);
-            }
         }
 
         queue.submit(Some(encoder.finish()));
