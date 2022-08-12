@@ -119,6 +119,7 @@ struct Example {
     index_count: usize,
     bind_group: wgpu::BindGroup,
     uniform_buf: wgpu::Buffer,
+    indirect_buf: wgpu::Buffer,
     pipeline: wgpu::RenderPipeline,
     pipeline_wire: Option<wgpu::RenderPipeline>,
 }
@@ -250,6 +251,23 @@ impl framework::Example for Example {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        // Create cube indirect buffer for draw call
+        let cube_indirect_data = &wgpu::util::DrawIndexedIndirect {
+            vertex_count: index_data.len() as u32,
+            instance_count: 1,
+            base_index: 0,
+            vertex_offset: 0,
+            base_instance: 0,
+        };
+        let cube_indirect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Indirect Buffer"),
+            contents: cube_indirect_data.as_bytes(),
+            usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::INDEX,
+        });
+
+        // Create one indirect buffer
+        let indirect_buf = cube_indirect_buf;
+
         // Create bind group
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &bind_group_layout,
@@ -361,6 +379,7 @@ impl framework::Example for Example {
             index_count: index_data.len(),
             bind_group,
             uniform_buf,
+            indirect_buf,
             pipeline,
             pipeline_wire,
         }
@@ -416,7 +435,15 @@ impl framework::Example for Example {
             rpass.set_vertex_buffer(0, self.vertex_buf.slice(..));
             rpass.pop_debug_group();
             rpass.insert_debug_marker("Draw!");
-            rpass.draw_indexed(0..self.index_count as u32, 0, 0..1);
+            //rpass.draw_indexed(
+            //    0..self.index_count as u32, //indices
+            //    0, // base_vertex
+            //    0..1 // instances
+            //);
+            rpass.draw_indexed_indirect(
+                &self.indirect_buf, // indirect_buffer
+                0, // indirect_offset
+            );
         }
 
         queue.submit(Some(encoder.finish()));
