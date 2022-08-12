@@ -83,6 +83,14 @@ fn create_texels(size: usize) -> Vec<u8> {
         .collect()
 }
 
+fn create_color(clr: [u8; 4]) -> [f32; 4] {
+    let mut result_clr: [f32; 4] = [0.0; 4];
+    for i in 0..clr.len() {
+        result_clr[i] = (clr[i] as f32) / 255.0;
+    }
+    result_clr
+}
+
 /// A wrapper for `pop_error_scope` futures that panics if an error occurs.
 ///
 /// Given a future `inner` of an `Option<E>` for some error type `E`,
@@ -235,7 +243,7 @@ impl framework::Example for Example {
         });
 
         // Create cube color
-        let color: &[f32; 4] = &[0.0, 0.0, 0.5, 1.0];
+        let color: &[f32; 4] = &create_color([210, 191, 85, 255]); // create color that has values 0-1 instead of 0-255
         let color_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(color),
