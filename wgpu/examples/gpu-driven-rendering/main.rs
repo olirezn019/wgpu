@@ -262,7 +262,7 @@ impl framework::Example for Example {
         let cube_indirect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Indirect Buffer"),
             contents: cube_indirect_data.as_bytes(),
-            usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::INDEX,
+            usage: wgpu::BufferUsages::INDIRECT,
         });
 
         // Create one indirect buffer
