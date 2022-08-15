@@ -1,5 +1,6 @@
 #[path = "../framework.rs"]
 mod framework;
+mod sphere;
 
 use bytemuck::{Pod, Zeroable};
 use std::{borrow::Cow, f32::consts, future::Future, mem, pin::Pin, task};
@@ -21,45 +22,31 @@ fn vertex(pos: [i8; 3], tc: [i8; 2]) -> Vertex {
 
 fn create_vertices() -> (Vec<Vertex>, Vec<u16>) {
     let vertex_data = [
-        // top (0, 0, 1)
-        vertex([-1, -1, 1], [0, 0]),
-        vertex([1, -1, 1], [1, 0]),
-        vertex([1, 1, 1], [1, 1]),
-        vertex([-1, 1, 1], [0, 1]),
-        // bottom (0, 0, -1)
-        vertex([-1, 1, -1], [1, 0]),
-        vertex([1, 1, -1], [0, 0]),
-        vertex([1, -1, -1], [0, 1]),
-        vertex([-1, -1, -1], [1, 1]),
-        // right (1, 0, 0)
-        vertex([1, -1, -1], [0, 0]),
-        vertex([1, 1, -1], [1, 0]),
-        vertex([1, 1, 1], [1, 1]),
-        vertex([1, -1, 1], [0, 1]),
-        // left (-1, 0, 0)
-        vertex([-1, -1, 1], [1, 0]),
-        vertex([-1, 1, 1], [0, 0]),
-        vertex([-1, 1, -1], [0, 1]),
-        vertex([-1, -1, -1], [1, 1]),
-        // front (0, 1, 0)
-        vertex([1, 1, -1], [1, 0]),
-        vertex([-1, 1, -1], [0, 0]),
-        vertex([-1, 1, 1], [0, 1]),
-        vertex([1, 1, 1], [1, 1]),
-        // back (0, -1, 0)
-        vertex([1, -1, 1], [0, 0]),
-        vertex([-1, -1, 1], [1, 0]),
-        vertex([-1, -1, -1], [1, 1]),
-        vertex([1, -1, -1], [0, 1]),
+        // front
+        vertex([-1,  1, -1], [0, 0]),
+        vertex([ 1,  1, -1], [0, 0]),
+        vertex([-1, -1, -1], [0, 0]),
+        vertex([ 1, -1, -1], [0, 0]),
+        // back
+        vertex([-1,  1,  1], [0, 0]),
+        vertex([ 1,  1,  1], [0, 0]),
+        vertex([-1, -1,  1], [0, 0]),
+        vertex([ 1, -1,  1], [0, 0]),
     ];
 
+    //2, 3, 1, 1, 0, 2, // front
+    //6, 4, 5, 5, 7, 6, // back
+    //0, 1, 5, 5, 4, 0, // top
+    //2, 6, 7, 7, 3, 2, // bottom
+    //3, 7, 5, 5, 1, 3, // right
+    //2, 0, 4, 4, 6, 2, // left
     let index_data: &[u16] = &[
-        0, 1, 2, 2, 3, 0, // top
-        4, 5, 6, 6, 7, 4, // bottom
-        8, 9, 10, 10, 11, 8, // right
-        12, 13, 14, 14, 15, 12, // left
-        16, 17, 18, 18, 19, 16, // front
-        20, 21, 22, 22, 23, 20, // back
+        2, 0, 1, 1, 3, 2, // bottom
+        6, 7, 5, 5, 4, 6, // top
+        0, 4, 5, 5, 1, 0, // back
+        2, 3, 7, 7, 6, 2, // front
+        3, 1, 5, 5, 7, 3, // right
+        2, 6, 4, 4, 0, 2, // left
     ];
 
     (vertex_data.to_vec(), index_data.to_vec())
@@ -251,6 +238,7 @@ impl framework::Example for Example {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        sphere::create_points();
         // Create cube indirect buffer for draw call
         let cube_indirect_data = &wgpu::util::DrawIndexedIndirect {
             vertex_count: index_data.len() as u32,
@@ -418,9 +406,9 @@ impl framework::Example for Example {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
                             a: 1.0,
                         }),
                         store: true,
@@ -444,6 +432,10 @@ impl framework::Example for Example {
                 &self.indirect_buf, // indirect_buffer
                 0, // indirect_offset
             );
+            if let Some(ref pipe) = self.pipeline_wire {
+                rpass.set_pipeline(pipe);
+                rpass.draw_indexed(0..self.index_count as u32, 0, 0..1);
+            }
         }
 
         queue.submit(Some(encoder.finish()));
