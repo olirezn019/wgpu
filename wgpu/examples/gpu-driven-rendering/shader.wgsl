@@ -8,7 +8,7 @@ struct VertexOutput {
 var<uniform> transform: mat4x4<f32>;
 
 @group(0)
-@binding(2)
+@binding(1)
 var<uniform> c_color: vec4<f32>;
 
 @vertex
@@ -21,10 +21,6 @@ fn vs_main(
     result.position = transform * position;
     return result;
 }
-
-@group(0)
-@binding(1)
-var r_color: texture_2d<u32>;
 
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
