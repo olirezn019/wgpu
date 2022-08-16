@@ -1,56 +1,10 @@
 #[path = "../framework.rs"]
 mod framework;
-mod sphere;
+mod shapes;
 
 use bytemuck::{Pod, Zeroable};
 use std::{borrow::Cow, f32::consts, future::Future, mem, pin::Pin, task};
 use wgpu::util::DeviceExt;
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-struct Vertex {
-    _pos: [f32; 4],
-    _tex_coord: [f32; 2], // _color: [f32; 4],
-}
-
-fn vertex(pos: [i8; 3], tc: [i8; 2]) -> Vertex {
-    Vertex {
-        _pos: [pos[0] as f32, pos[1] as f32, pos[2] as f32, 1.0],
-        _tex_coord: [tc[0] as f32, tc[1] as f32],
-    }
-}
-
-fn create_vertices() -> (Vec<Vertex>, Vec<u16>) {
-    let vertex_data = [
-        // front
-        vertex([-1,  1, -1], [0, 0]),
-        vertex([ 1,  1, -1], [0, 0]),
-        vertex([-1, -1, -1], [0, 0]),
-        vertex([ 1, -1, -1], [0, 0]),
-        // back
-        vertex([-1,  1,  1], [0, 0]),
-        vertex([ 1,  1,  1], [0, 0]),
-        vertex([-1, -1,  1], [0, 0]),
-        vertex([ 1, -1,  1], [0, 0]),
-    ];
-
-    //2, 3, 1, 1, 0, 2, // front
-    //6, 4, 5, 5, 7, 6, // back
-    //0, 1, 5, 5, 4, 0, // top
-    //2, 6, 7, 7, 3, 2, // bottom
-    //3, 7, 5, 5, 1, 3, // right
-    //2, 0, 4, 4, 6, 2, // left
-    let index_data: &[u16] = &[
-        2, 0, 1, 1, 3, 2, // bottom
-        6, 7, 5, 5, 4, 6, // top
-        0, 4, 5, 5, 1, 0, // back
-        2, 3, 7, 7, 6, 2, // front
-        3, 1, 5, 5, 7, 3, // right
-        2, 6, 4, 4, 0, 2, // left
-    ];
-
-    (vertex_data.to_vec(), index_data.to_vec())
-}
 
 // Convert color from 0-255 format to 0-1  ([255, 127, 0, 255] -> [1.0, 0,4980392156862745, 0, 1.0])
 fn create_color(clr: [u8; 4]) -> [f32; 4] {
@@ -118,8 +72,8 @@ impl framework::Example for Example {
         queue: &wgpu::Queue,
     ) -> Self {
         // Create the vertex and index buffers
-        let vertex_size = mem::size_of::<Vertex>();
-        let (vertex_data, index_data) = create_vertices();
+        let vertex_size = mem::size_of::<shapes::Vertex>();
+        let (vertex_data, index_data) = shapes::cube::create_vertices();
 
         let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -182,7 +136,6 @@ impl framework::Example for Example {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        sphere::create_points();
         // Create cube indirect buffer for draw call
         let cube_indirect_data = &wgpu::util::DrawIndexedIndirect {
             vertex_count: index_data.len() as u32,
