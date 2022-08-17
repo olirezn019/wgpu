@@ -26,10 +26,16 @@ pub fn map(value: f32, range1: [f32; 2], range2: [f32; 2]) -> f32 {
     result_value
 }
 
-pub fn create_vertices() -> Vec<Vertex> {
-    let mut vertices: Vec<Vertex> = Vec::<Vertex>::new();
+// Get position of two dimensional value in one dimensional array
+fn pos_in_one_dim_vec(x: u16, y: u16, columns: u16) -> u16 {
+    y*columns+x
+}
+
+pub fn create_vertices() -> (Vec<Vertex>, Vec<u16>) {
     let r: f32 = 1.0;
-    let resolution: u32 = 100;
+    let resolution: u16 = 20;
+
+    let mut vertices: Vec<Vertex> = Vec::<Vertex>::new();
 
     for i in 0..resolution {
         let lon = map(i as f32, [0.0, resolution as f32], [-PI, PI]);
@@ -46,5 +52,23 @@ pub fn create_vertices() -> Vec<Vertex> {
         }
     }
 
-    vertices
+    let mut indexes: Vec<u16> = Vec::<u16>::new();
+
+    for y in 0..resolution {
+        for x in 0..resolution {
+            //let position: [f32; 4] = vertices[(y*resolution+x) as usize]._pos;
+            // first triangle
+            indexes.push(pos_in_one_dim_vec(x, y+1, resolution));
+            indexes.push(pos_in_one_dim_vec(x+1, y+1, resolution));
+            indexes.push(pos_in_one_dim_vec(x+1, y, resolution));
+
+            // second triangle
+            indexes.push(pos_in_one_dim_vec(x+1, y, resolution));
+            indexes.push(pos_in_one_dim_vec(x, y, resolution));
+            indexes.push(pos_in_one_dim_vec(x, y+1, resolution));
+        }
+    }
+    //println!("{:?}", indexes);
+
+    (vertices, indexes)
 }

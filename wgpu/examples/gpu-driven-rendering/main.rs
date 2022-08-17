@@ -2,7 +2,6 @@
 mod framework;
 mod shapes;
 
-use bytemuck::{Pod, Zeroable};
 use std::{borrow::Cow, f32::consts, future::Future, mem, pin::Pin, task};
 use wgpu::util::DeviceExt;
 
@@ -73,7 +72,8 @@ impl framework::Example for Example {
     ) -> Self {
         // Create the vertex and index buffers
         let vertex_size = mem::size_of::<shapes::Vertex>();
-        let (vertex_data, index_data) = shapes::cube::create_vertices();
+        //let (vertex_data, index_data) = shapes::cube::create_vertices();
+        let (vertex_data, index_data) = shapes::sphere::create_vertices();
 
         let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -206,6 +206,8 @@ impl framework::Example for Example {
             }),
             primitive: wgpu::PrimitiveState {
                 cull_mode: Some(wgpu::Face::Back),
+                //topology: wgpu::PrimitiveTopology::PointList,
+                //polygon_mode: wgpu::PolygonMode::Point,
                 ..Default::default()
             },
             depth_stencil: None,
@@ -341,31 +343,5 @@ impl framework::Example for Example {
 }
 
 fn main() {
-    framework::run::<Example>("cube");
-}
-
-#[test]
-fn cube() {
-    framework::test::<Example>(framework::FrameworkRefTest {
-        image_path: "/examples/cube/screenshot.png",
-        width: 1024,
-        height: 768,
-        optional_features: wgpu::Features::default(),
-        base_test_parameters: framework::test_common::TestParameters::default(),
-        tolerance: 1,
-        max_outliers: 500, // Bounded by rpi4
-    });
-}
-
-#[test]
-fn cube_lines() {
-    framework::test::<Example>(framework::FrameworkRefTest {
-        image_path: "/examples/cube/screenshot-lines.png",
-        width: 1024,
-        height: 768,
-        optional_features: wgpu::Features::POLYGON_MODE_LINE,
-        base_test_parameters: framework::test_common::TestParameters::default(),
-        tolerance: 2,
-        max_outliers: 600, // Bounded by rpi4 on GL
-    });
+    framework::run::<Example>("gpu driven rendering");
 }
