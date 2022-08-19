@@ -121,6 +121,7 @@ parking_lot = ">=0.11,<0.13"
 raw-window-handle = "0.5"
 serde = { version = "1", features = ["derive"], optional = true }
 smallvec = "1"
+genmesh = "0.6.2"
 
 [dev-dependencies]
 bitflags = "1"

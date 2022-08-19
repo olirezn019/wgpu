@@ -72,8 +72,15 @@ impl framework::Example for Example {
     ) -> Self {
         // Create the vertex and index buffers
         let vertex_size = mem::size_of::<shapes::Vertex>();
-        //let (vertex_data, index_data) = shapes::cube::create_vertices();
-        let (vertex_data, index_data) = shapes::sphere::create_vertices();
+        //let (vertex_data, index_data) = shapes::sphere::create_vertices();
+        let (vertex_data, index_data) = shapes::sphere::generate_vertices();
+
+        //println!("{:?}", vertex_data);
+        //println!("{:?}", vertex_data1);
+
+        //for i in 0..index_data.len() {
+            
+        //}
 
         let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -135,6 +142,8 @@ impl framework::Example for Example {
             contents: bytemuck::cast_slice(color),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
+
+        shapes::sphere::generate_vertices();
 
         // Create cube indirect buffer for draw call
         let cube_indirect_data = &wgpu::util::DrawIndexedIndirect {
