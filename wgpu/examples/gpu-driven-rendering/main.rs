@@ -2,7 +2,7 @@
 mod framework;
 mod shapes;
 
-use std::{borrow::Cow, f32::consts, future::Future, mem, pin::Pin, task};
+use std::{borrow::Cow, f32::consts, future::Future, mem, pin::Pin, task, vec::Vec};
 use wgpu::util::DeviceExt;
 
 // Convert color from 0-255 format to 0-1  ([255, 127, 0, 255] -> [1.0, 0,4980392156862745, 0, 1.0])
@@ -51,7 +51,7 @@ impl Example {
     fn generate_matrix(aspect_ratio: f32) -> glam::Mat4 {
         let projection = glam::Mat4::perspective_rh(consts::FRAC_PI_4, aspect_ratio, 1.0, 10.0);
         let view = glam::Mat4::look_at_rh(
-            glam::Vec3::new(1.5f32, -5.0, 3.0),
+            glam::Vec3::new(0.0, -8.0, 3.0),
             glam::Vec3::ZERO,
             glam::Vec3::Z,
         );
@@ -61,7 +61,7 @@ impl Example {
 
 impl framework::Example for Example {
     fn optional_features() -> wgt::Features {
-        wgt::Features::POLYGON_MODE_LINE
+        wgt::Features::MULTI_DRAW_INDIRECT | wgt::Features::POLYGON_MODE_LINE
     }
 
     fn init(
@@ -72,15 +72,20 @@ impl framework::Example for Example {
     ) -> Self {
         // Create the vertex and index buffers
         let vertex_size = mem::size_of::<shapes::Vertex>();
-        //let (vertex_data, index_data) = shapes::sphere::create_vertices();
-        let (vertex_data, index_data) = shapes::sphere::generate_vertices();
+        let (mut vertex_data1, index_data1) = shapes::cube::create_vertices();
+        let (mut vertex_data2, mut index_data2) = shapes::sphere::generate_vertices();
 
-        //println!("{:?}", vertex_data);
-        //println!("{:?}", vertex_data1);
+        let translation_matrices = [
+            [2.0, 0.0, 0.0, 0.0], // cube
+            [-2.0, 0.0, 0.0, 0.0], // sphere
+        ];
 
-        //for i in 0..index_data.len() {
-            
-        //}
+        shapes::translate_vertex_data(&mut vertex_data1, &translation_matrices[0]);
+        shapes::translate_vertex_data(&mut vertex_data2, &translation_matrices[1]);
+
+        let vertex_data: Vec<shapes::Vertex> = [&vertex_data1[..], &vertex_data2[..]].concat();
+        //let index_data: Vec<u8> = [bytemuck::cast_slice(&index_data1), bytemuck::cast_slice(&index_data2)].concat();
+        let index_data: Vec<u16> = shapes::merge_index_data(&index_data1, &mut index_data2, vertex_data1.len() as u16);
 
         let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -143,24 +148,34 @@ impl framework::Example for Example {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        shapes::sphere::generate_vertices();
-
-        // Create cube indirect buffer for draw call
+        // Create cube indirect buffer
         let cube_indirect_data = &wgpu::util::DrawIndexedIndirect {
-            vertex_count: index_data.len() as u32,
+            vertex_count: index_data1.len() as u32,
             instance_count: 1,
             base_index: 0,
             vertex_offset: 0,
             base_instance: 0,
         };
-        let cube_indirect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Indirect Buffer"),
-            contents: cube_indirect_data.as_bytes(),
-            usage: wgpu::BufferUsages::INDIRECT,
-        });
+
+        // Create sphere indirect buffer
+        let sphere_indirect_data = &wgpu::util::DrawIndexedIndirect {
+            vertex_count: index_data2.len() as u32,
+            instance_count: 1,
+            base_index: 0,
+            vertex_offset: 0,
+            base_instance: 0,
+        };
+
+        let indirect_data = &[cube_indirect_data.as_bytes(), sphere_indirect_data.as_bytes()].concat();
+        //let indirect_data = cube_indirect_data.as_bytes();
+        println!("{}", indirect_data.len());
 
         // Create one indirect buffer
-        let indirect_buf = cube_indirect_buf;
+        let indirect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Indirect Buffer"),
+            contents: indirect_data,
+            usage: wgpu::BufferUsages::INDIRECT,
+        });
 
         // Create bind group
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -268,7 +283,7 @@ impl framework::Example for Example {
         Example {
             vertex_buf,
             index_buf,
-            index_count: index_data.len(),
+            index_count: index_data1.len() + index_data2.len(),
             bind_group,
             uniform_buf,
             indirect_buf,
@@ -332,9 +347,10 @@ impl framework::Example for Example {
             //    0, // base_vertex
             //    0..1 // instances
             //);
-            rpass.draw_indexed_indirect(
+            rpass.multi_draw_indexed_indirect(
                 &self.indirect_buf, // indirect_buffer
                 0, // indirect_offset
+                2, // count
             );
             if let Some(ref pipe) = self.pipeline_wire {
                 rpass.set_pipeline(pipe);

@@ -19,3 +19,19 @@ fn vertex(pos: [i8; 3], tc: [i8; 2]) -> Vertex {
         _tex_coord: [tc[0] as f32, tc[1] as f32],
     }
 }
+
+pub fn merge_index_data(index_data1: &Vec<u16>, index_data2: &mut Vec<u16>, vertex_count1: u16) -> Vec<u16> {
+    for i in 0..index_data2.len() {
+        index_data2[i] += vertex_count1;
+    }
+
+    [&index_data1[..], &index_data2[..]].concat()
+}
+
+pub fn translate_vertex_data(vertex_data: &mut Vec<Vertex>, matrix: &[f32; 4]) {
+    for i in 0..vertex_data.len() {
+        for j in 0..4 {
+            vertex_data[i]._pos[j] += matrix[j];
+        }
+    }
+}
