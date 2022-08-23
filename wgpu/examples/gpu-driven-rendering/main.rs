@@ -208,7 +208,7 @@ impl framework::Example for Example {
                     shader_location: 0,
                 },
                 wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x2,
+                    format: wgpu::VertexFormat::Float32x4,
                     offset: 4 * 4,
                     shader_location: 1,
                 },
