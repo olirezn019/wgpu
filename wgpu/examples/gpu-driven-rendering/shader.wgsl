@@ -9,7 +9,7 @@ var<uniform> transform: mat4x4<f32>;
 
 @group(0)
 @binding(1)
-var<uniform> c_color: vec4<f32>;
+var<storage> transform_matrices: array<mat4x4<f32>>;
 
 @vertex
 fn vs_main(
@@ -18,7 +18,7 @@ fn vs_main(
 ) -> VertexOutput {
     var result: VertexOutput;
     result.color = color;
-    result.position = transform * position;
+    result.position = transform * (transform_matrices[0] * position);
     return result;
 }
 

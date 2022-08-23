@@ -28,10 +28,10 @@ pub fn merge_index_data(index_data1: &Vec<u16>, index_data2: &mut Vec<u16>, vert
     [&index_data1[..], &index_data2[..]].concat()
 }
 
-pub fn translate_vertex_data(vertex_data: &mut Vec<Vertex>, matrix: &[f32; 4]) {
-    for i in 0..vertex_data.len() {
+pub fn translate_vertices(vertex_arr: &mut Vec<Vertex>, matrix: &[f32; 4]) {
+    for i in 0..vertex_arr.len() {
         for j in 0..4 {
-            vertex_data[i]._pos[j] += matrix[j];
+            vertex_arr[i]._pos[j] += matrix[j];
         }
     }
 }

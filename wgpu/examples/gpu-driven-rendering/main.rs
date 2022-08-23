@@ -75,16 +75,7 @@ impl framework::Example for Example {
         let (mut vertex_data1, index_data1) = shapes::cube::create_vertices();
         let (mut vertex_data2, mut index_data2) = shapes::sphere::generate_vertices();
 
-        let translation_matrices = [
-            [2.0, 0.0, 0.0, 0.0], // cube
-            [-2.0, 0.0, 0.0, 0.0], // sphere
-        ];
-
-        shapes::translate_vertex_data(&mut vertex_data1, &translation_matrices[0]);
-        shapes::translate_vertex_data(&mut vertex_data2, &translation_matrices[1]);
-
         let vertex_data: Vec<shapes::Vertex> = [&vertex_data1[..], &vertex_data2[..]].concat();
-        //let index_data: Vec<u8> = [bytemuck::cast_slice(&index_data1), bytemuck::cast_slice(&index_data2)].concat();
         let index_data: Vec<u16> = shapes::merge_index_data(&index_data1, &mut index_data2, vertex_data1.len() as u16);
 
         let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -115,11 +106,11 @@ impl framework::Example for Example {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(4*4),
+                        min_binding_size: wgpu::BufferSize::new(128),
                     },
                     count: None,
                 },
@@ -140,12 +131,25 @@ impl framework::Example for Example {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        // Create cube color
-        let color: &[f32; 4] = &create_color([210, 191, 85, 255]); // create color that has values 0-1 instead of 0-255
-        let color_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Uniform Buffer"),
-            contents: bytemuck::cast_slice(color),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        // Create storage buffer with transformation matrices for individual objects
+        let transform_matrices: &Vec<f32> = &[
+            // cube matrix
+            glam::Mat4::from_scale_rotation_translation(
+                glam::Vec3::ONE,
+                glam::Quat::IDENTITY,
+                glam::Vec3::new(2.0, 0.0, 0.0),
+            ).to_cols_array_2d().concat(),
+            // sphere matrix
+            glam::Mat4::from_scale_rotation_translation(
+                glam::Vec3::ONE,
+                glam::Quat::IDENTITY,
+                glam::Vec3::new(-2.0, 0.0, 0.0),
+            ).to_cols_array_2d().concat(),
+        ].concat();
+        let transform_mat_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Storage Buffer"),
+            contents: bytemuck::cast_slice(transform_matrices),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::STORAGE,
         });
 
         // Create cube indirect buffer
@@ -167,8 +171,6 @@ impl framework::Example for Example {
         };
 
         let indirect_data = &[cube_indirect_data.as_bytes(), sphere_indirect_data.as_bytes()].concat();
-        //let indirect_data = cube_indirect_data.as_bytes();
-        println!("{}", indirect_data.len());
 
         // Create one indirect buffer
         let indirect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -187,7 +189,7 @@ impl framework::Example for Example {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: color_buf.as_entire_binding(),
+                    resource: transform_mat_buf.as_entire_binding(),
                 },
             ],
             label: None,
