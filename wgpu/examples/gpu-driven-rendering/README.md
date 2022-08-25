@@ -1,11 +1,11 @@
-# cube
+# GPU Driven Rendering
 
-This example renders a textured cube.
+This example renders many objects using one indirect draw call.
 
 ## To Run
 
 ```
-cargo run --example cube
+cargo run --example gpu-driven-rendering
 ```
 
 ## Screenshots

@@ -110,7 +110,7 @@ impl framework::Example for Example {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(128),
+                        min_binding_size: wgpu::BufferSize::new(64*2),
                     },
                     count: None,
                 },
@@ -149,7 +149,7 @@ impl framework::Example for Example {
         let transform_mat_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Storage Buffer"),
             contents: bytemuck::cast_slice(transform_matrices),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::STORAGE,
+            usage: wgpu::BufferUsages::STORAGE,
         });
 
         // Create cube indirect buffer
@@ -165,14 +165,14 @@ impl framework::Example for Example {
         let sphere_indirect_data = &wgpu::util::DrawIndexedIndirect {
             vertex_count: index_data2.len() as u32,
             instance_count: 1,
-            base_index: 0,
+            base_index: index_data1.len() as u32,
             vertex_offset: 0,
-            base_instance: 0,
+            base_instance: 1,
         };
 
+        // Create one indirect buffer
         let indirect_data = &[cube_indirect_data.as_bytes(), sphere_indirect_data.as_bytes()].concat();
 
-        // Create one indirect buffer
         let indirect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Indirect Buffer"),
             contents: indirect_data,
@@ -356,7 +356,11 @@ impl framework::Example for Example {
             );
             if let Some(ref pipe) = self.pipeline_wire {
                 rpass.set_pipeline(pipe);
-                rpass.draw_indexed(0..self.index_count as u32, 0, 0..1);
+                rpass.multi_draw_indexed_indirect(
+                    &self.indirect_buf, // indirect_buffer
+                    0, // indirect_offset
+                    2, // count
+                );
             }
         }
 

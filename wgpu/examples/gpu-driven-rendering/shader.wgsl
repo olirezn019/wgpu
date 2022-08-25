@@ -1,5 +1,5 @@
 struct VertexOutput {
-    @location(0) color: vec4<f32>,
+    @location(1) color: vec4<f32>,
     @builtin(position) position: vec4<f32>,
 };
 
@@ -15,10 +15,11 @@ var<storage> transform_matrices: array<mat4x4<f32>>;
 fn vs_main(
     @location(0) position: vec4<f32>,
     @location(1) color: vec4<f32>,
+    @builtin(instance_index) instance_id: u32,
 ) -> VertexOutput {
     var result: VertexOutput;
     result.color = color;
-    result.position = transform * (transform_matrices[0] * position);
+    result.position = transform * (transform_matrices[instance_id] * position);
     return result;
 }
 
