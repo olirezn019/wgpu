@@ -2,6 +2,7 @@
 mod framework;
 mod shapes;
 
+use shapes::{Object, MeshType, TextureType};
 use std::{borrow::Cow, f32::consts, future::Future, mem, pin::Pin, task, vec::Vec};
 use wgpu::util::DeviceExt;
 
@@ -72,8 +73,26 @@ impl framework::Example for Example {
     ) -> Self {
         // Create the vertex and index buffers
         let vertex_size = mem::size_of::<shapes::Vertex>();
-        let (mut vertex_data1, index_data1) = shapes::cube::create_vertices();
-        let (mut vertex_data2, mut index_data2) = shapes::sphere::generate_vertices();
+
+        // Create objects which will be drawn to the scene
+        let cube = Object {
+            id: 0,
+            mesh: MeshType::Cube,
+            texture: TextureType::Water
+        };
+        let cylinder = Object {
+            id: 1,
+            mesh: MeshType::Cylinder,
+            texture: TextureType::Grass  
+        };
+        let sphere = Object {
+            id: 2,
+            mesh: MeshType::Sphere,
+            texture: TextureType::Grass
+        };
+
+        let (mut vertex_data1, index_data1) = cube.generate_vertices();
+        let (mut vertex_data2, mut index_data2) = cylinder.generate_vertices();
 
         let vertex_data: Vec<shapes::Vertex> = [&vertex_data1[..], &vertex_data2[..]].concat();
         let index_data: Vec<u16> = shapes::merge_index_data(&index_data1, &mut index_data2, vertex_data1.len() as u16);

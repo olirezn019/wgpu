@@ -1,5 +1,6 @@
-pub mod sphere;
-pub mod cube;
+mod sphere;
+mod cube;
+mod cylinder;
 
 use bytemuck::{Pod, Zeroable};
 
@@ -11,6 +12,35 @@ const PI: f32 = 3.14159265359;
 pub struct Vertex {
     _pos: [f32; 4],
     _color: [f32; 4],
+}
+
+pub enum MeshType {
+    Cube,
+    Cylinder,
+    Sphere
+}
+
+pub enum TextureType {
+    Water,
+    Grass
+}
+
+pub struct Object {
+    pub id: u32,
+    pub mesh: MeshType,
+    pub texture: TextureType
+}
+
+impl Object {
+    pub fn generate_vertices(&self) -> (Vec<Vertex>, Vec<u16>) {
+        let result;
+        match self.mesh {
+            MeshType::Cube => result = cube::create_vertices(),
+            MeshType::Cylinder => result = cylinder::generate_vertices(),
+            MeshType::Sphere => result = sphere::generate_vertices()
+        }
+        result
+    }
 }
 
 fn vertex(pos: [i8; 3], c: [u8; 4]) -> Vertex {
