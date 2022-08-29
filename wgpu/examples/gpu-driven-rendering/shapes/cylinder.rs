@@ -1,4 +1,4 @@
-use crate::shapes::{Vertex, PI};
+use crate::shapes::{Vertex};
 use std::vec::Vec;
 use genmesh::{Position, Polygon};
 use genmesh::generators::{Cylinder, IndexedPolygon, SharedVertex};

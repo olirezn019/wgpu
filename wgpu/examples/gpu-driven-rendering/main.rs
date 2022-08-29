@@ -2,7 +2,7 @@
 mod framework;
 mod shapes;
 
-use shapes::{Object, MeshType, TextureType};
+use shapes::{Object, Mesh, MeshType, TextureType};
 use std::{borrow::Cow, f32::consts, future::Future, mem, pin::Pin, task, vec::Vec};
 use wgpu::util::DeviceExt;
 
@@ -74,28 +74,87 @@ impl framework::Example for Example {
         // Create the vertex and index buffers
         let vertex_size = mem::size_of::<shapes::Vertex>();
 
+        // Creat meshes
+        let mut cube = Mesh {
+            m_type: MeshType::Cube,
+            vertices: Vec::<shapes::Vertex>::new(),
+            indices: Vec::<u16>::new()
+        };
+        let mut cylinder = Mesh {
+            m_type: MeshType::Cylinder,
+            vertices: Vec::<shapes::Vertex>::new(),
+            indices: Vec::<u16>::new()
+        };
+        let mut sphere = Mesh {
+            m_type: MeshType::Sphere,
+            vertices: Vec::<shapes::Vertex>::new(),
+            indices: Vec::<u16>::new()
+        };
+
+        cube.generate_vertices();
+        cylinder.generate_vertices();
+        sphere.generate_vertices();
+
+        let meshes: Vec<&Mesh> = vec![&cube, &cylinder, &sphere];
+
+        let index_data_len = |m_type: MeshType| -> u32 {
+            let length;
+            match m_type {
+                MeshType::Cube => length = cube.indices.len(),
+                MeshType::Cylinder => length = cylinder.indices.len(),
+                MeshType::Sphere => length = sphere.indices.len()
+            }
+            length as u32
+        };
+
+        let index_offset = |mesh_type: MeshType| -> u32 {
+            let mut offset: u32 = 0;
+            for m in &meshes {
+                if m.m_type == mesh_type {
+                    return offset;
+                }
+                offset += index_data_len(m.m_type);
+            }
+            offset
+        };
+
         // Create objects which will be drawn to the scene
-        let cube = Object {
-            id: 0,
-            mesh: MeshType::Cube,
-            texture: TextureType::Water
+        let cube1 = Object {
+            m_type: MeshType::Cube,
+            texture: TextureType::Water,
+            transform_m: glam::Mat4::from_scale_rotation_translation(
+                glam::Vec3::ONE,
+                glam::Quat::IDENTITY,
+                glam::Vec3::new(2.0, 0.0, 0.0),
+            )
         };
-        let cylinder = Object {
-            id: 1,
-            mesh: MeshType::Cylinder,
-            texture: TextureType::Grass  
+        let cylinder1 = Object {
+            m_type: MeshType::Cylinder,
+            texture: TextureType::Grass,
+            transform_m: glam::Mat4::from_scale_rotation_translation(
+                glam::Vec3::ONE,
+                glam::Quat::IDENTITY,
+                glam::Vec3::new(-2.0, 0.0, 0.0),
+            )
         };
-        let sphere = Object {
-            id: 2,
-            mesh: MeshType::Sphere,
-            texture: TextureType::Grass
+        let sphere1 = Object {
+            m_type: MeshType::Sphere,
+            texture: TextureType::Grass,
+            transform_m: glam::Mat4::from_scale_rotation_translation(
+                glam::Vec3::ONE,
+                glam::Quat::IDENTITY,
+                glam::Vec3::new(-2.0, 0.0, 0.0),
+            )
         };
 
-        let (mut vertex_data1, index_data1) = cube.generate_vertices();
-        let (mut vertex_data2, mut index_data2) = cylinder.generate_vertices();
+        let objects: Vec<&Object> = vec![&cube1, &sphere1];
 
-        let vertex_data: Vec<shapes::Vertex> = [&vertex_data1[..], &vertex_data2[..]].concat();
-        let index_data: Vec<u16> = shapes::merge_index_data(&index_data1, &mut index_data2, vertex_data1.len() as u16);
+        //let (mut vertex_data1, index_data1) = cube.get_vertices();
+        //let (mut vertex_data2, mut index_data2) = cylinder.get_vertices();
+
+        //let vertex_data: Vec<shapes::Vertex> = [&cube.vertices[..], &cylinder.vertices[..]].concat();
+        //let index_data: Vec<u16> = shapes::merge_index_data(&cube.indices, &mut cylinder.indices, cube.vertices.len() as u16);
+        let (vertex_data, index_data) = shapes::merge_index_vertex_data(&meshes);
 
         let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -151,50 +210,33 @@ impl framework::Example for Example {
         });
 
         // Create storage buffer with transformation matrices for individual objects
-        let transform_matrices: &Vec<f32> = &[
-            // cube matrix
-            glam::Mat4::from_scale_rotation_translation(
-                glam::Vec3::ONE,
-                glam::Quat::IDENTITY,
-                glam::Vec3::new(2.0, 0.0, 0.0),
-            ).to_cols_array_2d().concat(),
-            // sphere matrix
-            glam::Mat4::from_scale_rotation_translation(
-                glam::Vec3::ONE,
-                glam::Quat::IDENTITY,
-                glam::Vec3::new(-2.0, 0.0, 0.0),
-            ).to_cols_array_2d().concat(),
-        ].concat();
+        let transform_matrices = shapes::merge_matrices(&objects);
         let transform_mat_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Storage Buffer"),
-            contents: bytemuck::cast_slice(transform_matrices),
+            contents: bytemuck::cast_slice(&transform_matrices),
             usage: wgpu::BufferUsages::STORAGE,
         });
 
-        // Create cube indirect buffer
-        let cube_indirect_data = &wgpu::util::DrawIndexedIndirect {
-            vertex_count: index_data1.len() as u32,
-            instance_count: 1,
-            base_index: 0,
-            vertex_offset: 0,
-            base_instance: 0,
-        };
+        let mut indirect_data: Vec<u8> = Vec::<u8>::new();
 
-        // Create sphere indirect buffer
-        let sphere_indirect_data = &wgpu::util::DrawIndexedIndirect {
-            vertex_count: index_data2.len() as u32,
-            instance_count: 1,
-            base_index: index_data1.len() as u32,
-            vertex_offset: 0,
-            base_instance: 1,
-        };
+        for i in 0..objects.len() {
+            indirect_data.extend(
+                wgpu::util::DrawIndexedIndirect {
+                    vertex_count: index_data_len(objects[i].m_type),
+                    instance_count: 1,
+                    base_index: index_offset(objects[i].m_type),
+                    vertex_offset: 0,
+                    base_instance: i as u32,
+                }.as_bytes()
+            );
+        }
 
         // Create one indirect buffer
-        let indirect_data = &[cube_indirect_data.as_bytes(), sphere_indirect_data.as_bytes()].concat();
+        //let indirect_data = &[cube_indirect_data.as_bytes(), sphere_indirect_data.as_bytes()].concat();
 
         let indirect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Indirect Buffer"),
-            contents: indirect_data,
+            contents: bytemuck::cast_slice(&indirect_data),
             usage: wgpu::BufferUsages::INDIRECT,
         });
 
@@ -304,7 +346,7 @@ impl framework::Example for Example {
         Example {
             vertex_buf,
             index_buf,
-            index_count: index_data1.len() + index_data2.len(),
+            index_count: cube.indices.len() + cylinder.indices.len(),
             bind_group,
             uniform_buf,
             indirect_buf,
