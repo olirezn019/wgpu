@@ -40,7 +40,7 @@ impl<F: Future<Output = Option<wgpu::Error>>> Future for ErrorFuture<F> {
 struct Example {
     vertex_buf: wgpu::Buffer,
     index_buf: wgpu::Buffer,
-    index_count: usize,
+    object_count: usize,
     bind_group: wgpu::BindGroup,
     uniform_buf: wgpu::Buffer,
     indirect_buf: wgpu::Buffer,
@@ -50,10 +50,10 @@ struct Example {
 
 impl Example {
     fn generate_matrix(aspect_ratio: f32) -> glam::Mat4 {
-        let projection = glam::Mat4::perspective_rh(consts::FRAC_PI_4, aspect_ratio, 1.0, 10.0);
+        let projection = glam::Mat4::perspective_rh(consts::FRAC_PI_4, aspect_ratio, 1.0, 20.0);
         let view = glam::Mat4::look_at_rh(
-            glam::Vec3::new(0.0, -8.0, 3.0),
-            glam::Vec3::ZERO,
+            glam::Vec3::new(5.0, -11.0, 3.0),
+            glam::Vec3::new(1.5, 0.0, 0.0),
             glam::Vec3::Z,
         );
         projection * view
@@ -118,42 +118,51 @@ impl framework::Example for Example {
             offset
         };
 
+        println!("{}", index_offset(MeshType::Sphere));
+
         // Create objects which will be drawn to the scene
         let cube1 = Object {
             m_type: MeshType::Cube,
             texture: TextureType::Water,
-            transform_m: glam::Mat4::from_scale_rotation_translation(
-                glam::Vec3::ONE,
-                glam::Quat::IDENTITY,
-                glam::Vec3::new(2.0, 0.0, 0.0),
-            )
+            transform_m: vec![
+                glam::Mat4::from_scale_rotation_translation(
+                    glam::Vec3::ONE,
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(3.0, 0.0, 0.0),
+                ),
+                glam::Mat4::from_scale_rotation_translation(
+                    glam::Vec3::ONE,
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(-3.0, 0.0, 0.0),
+                )
+            ]
         };
         let cylinder1 = Object {
             m_type: MeshType::Cylinder,
             texture: TextureType::Grass,
-            transform_m: glam::Mat4::from_scale_rotation_translation(
-                glam::Vec3::ONE,
-                glam::Quat::IDENTITY,
-                glam::Vec3::new(-2.0, 0.0, 0.0),
-            )
+            transform_m: vec![
+                glam::Mat4::from_scale_rotation_translation(
+                    glam::Vec3::ONE,
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(0.0, 0.0, 0.0),
+                )
+            ]
         };
         let sphere1 = Object {
             m_type: MeshType::Sphere,
             texture: TextureType::Grass,
-            transform_m: glam::Mat4::from_scale_rotation_translation(
-                glam::Vec3::ONE,
-                glam::Quat::IDENTITY,
-                glam::Vec3::new(-2.0, 0.0, 0.0),
-            )
+            transform_m: vec![
+                glam::Mat4::from_scale_rotation_translation(
+                    glam::Vec3::ONE,
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(6.0, 0.0, 0.0),
+                )
+            ]
         };
 
-        let objects: Vec<&Object> = vec![&cube1, &sphere1];
+        let objects: Vec<&Object> = vec![&cube1, &sphere1, &cylinder1];
 
-        //let (mut vertex_data1, index_data1) = cube.get_vertices();
-        //let (mut vertex_data2, mut index_data2) = cylinder.get_vertices();
-
-        //let vertex_data: Vec<shapes::Vertex> = [&cube.vertices[..], &cylinder.vertices[..]].concat();
-        //let index_data: Vec<u16> = shapes::merge_index_data(&cube.indices, &mut cylinder.indices, cube.vertices.len() as u16);
+        // Create one big vertex and index buffer from meshes
         let (vertex_data, index_data) = shapes::merge_index_vertex_data(&meshes);
 
         let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -188,7 +197,7 @@ impl framework::Example for Example {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(64*2),
+                        min_binding_size: wgpu::BufferSize::new((64*objects.len()) as u64),
                     },
                     count: None,
                 },
@@ -218,17 +227,22 @@ impl framework::Example for Example {
         });
 
         let mut indirect_data: Vec<u8> = Vec::<u8>::new();
+        let mut instance_count = 0;
+        let mut base_instance = 0;
 
-        for i in 0..objects.len() {
+        for o in &objects {
+            instance_count = o.transform_m.len();
+            //println!("{}", index_data_len(objects[i].m_type));
             indirect_data.extend(
                 wgpu::util::DrawIndexedIndirect {
-                    vertex_count: index_data_len(objects[i].m_type),
-                    instance_count: 1,
-                    base_index: index_offset(objects[i].m_type),
+                    vertex_count: index_data_len(o.m_type),
+                    instance_count: instance_count as u32,
+                    base_index: index_offset(o.m_type),
                     vertex_offset: 0,
-                    base_instance: i as u32,
+                    base_instance: base_instance as u32,
                 }.as_bytes()
             );
+            base_instance += instance_count;
         }
 
         // Create one indirect buffer
@@ -346,7 +360,7 @@ impl framework::Example for Example {
         Example {
             vertex_buf,
             index_buf,
-            index_count: cube.indices.len() + cylinder.indices.len(),
+            object_count: objects.len(),
             bind_group,
             uniform_buf,
             indirect_buf,
@@ -405,22 +419,18 @@ impl framework::Example for Example {
             rpass.set_vertex_buffer(0, self.vertex_buf.slice(..));
             rpass.pop_debug_group();
             rpass.insert_debug_marker("Draw!");
-            //rpass.draw_indexed(
-            //    0..self.index_count as u32, //indices
-            //    0, // base_vertex
-            //    0..1 // instances
-            //);
+            // Indirect draw
             rpass.multi_draw_indexed_indirect(
                 &self.indirect_buf, // indirect_buffer
                 0, // indirect_offset
-                2, // count
+                self.object_count as u32, // count
             );
             if let Some(ref pipe) = self.pipeline_wire {
                 rpass.set_pipeline(pipe);
                 rpass.multi_draw_indexed_indirect(
                     &self.indirect_buf, // indirect_buffer
                     0, // indirect_offset
-                    2, // count
+                    self.object_count as u32, // count
                 );
             }
         }

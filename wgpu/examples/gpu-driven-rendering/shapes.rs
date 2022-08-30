@@ -52,7 +52,7 @@ impl Mesh {
 pub struct Object {
     pub m_type: MeshType,
     pub texture: TextureType,
-    pub transform_m: glam::Mat4
+    pub transform_m: Vec<glam::Mat4>
 }
 
 fn vertex(pos: [i8; 3], c: [u8; 4]) -> Vertex {
@@ -86,9 +86,11 @@ pub fn merge_matrices(objects: &Vec<&Object>) -> Vec<f32> {
     let mut matrices: Vec<f32> = Vec::<f32>::new();
 
     for o in objects {
-        matrices.extend(
-            &o.transform_m.to_cols_array_2d().concat()
-        );
+        for mat in &o.transform_m {
+            matrices.extend(
+                mat.to_cols_array_2d().concat()
+            );
+        }
     }
 
     matrices
