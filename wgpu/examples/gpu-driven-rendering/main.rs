@@ -201,6 +201,16 @@ impl framework::Example for Example {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new((16*objects.len()) as u64),
+                    },
+                    count: None,
+                },
             ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -223,6 +233,14 @@ impl framework::Example for Example {
         let transform_mat_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Storage Buffer"),
             contents: bytemuck::cast_slice(&transform_matrices),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
+        // Create storage buffer with colors for individual objects
+        let colors = shapes::get_object_colors(&objects);
+        let colros_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Storage Buffer"),
+            contents: bytemuck::cast_slice(&colors),
             usage: wgpu::BufferUsages::STORAGE,
         });
 
@@ -265,6 +283,10 @@ impl framework::Example for Example {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: transform_mat_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: colros_buf.as_entire_binding(),
                 },
             ],
             label: None,

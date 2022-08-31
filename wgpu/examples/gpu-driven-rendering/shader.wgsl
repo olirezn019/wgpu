@@ -11,6 +11,10 @@ var<uniform> transform: mat4x4<f32>;
 @binding(1)
 var<storage> transform_matrices: array<mat4x4<f32>>;
 
+@group(0)
+@binding(2)
+var<storage> object_colors: array<vec4<f32>>;
+
 @vertex
 fn vs_main(
     @location(0) position: vec4<f32>,
@@ -18,7 +22,7 @@ fn vs_main(
     @builtin(instance_index) instance_id: u32,
 ) -> VertexOutput {
     var result: VertexOutput;
-    result.color = color;
+    result.color = object_colors[instance_id];
     result.position = transform * (transform_matrices[instance_id] * position);
     return result;
 }

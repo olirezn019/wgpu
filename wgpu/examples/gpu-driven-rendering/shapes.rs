@@ -24,8 +24,7 @@ pub enum MeshType {
 #[derive(Debug)]
 pub enum TextureType {
     Water,
-    Grass,
-    Rainbow
+    Grass
 }
 
 pub struct Mesh {
@@ -94,4 +93,19 @@ pub fn merge_matrices(objects: &Vec<&Object>) -> Vec<f32> {
     }
 
     matrices
+}
+
+pub fn get_object_colors(objects: &Vec<&Object>) -> Vec<f32> {
+    let mut colors: Vec<f32> = Vec::<f32>::new();
+
+    for o in objects {
+        for mat in &o.transform_m {
+            match o.texture {
+                TextureType::Water => colors.extend(crate::create_color([1, 41, 95, 255])),
+                TextureType::Grass => colors.extend(crate::create_color([52, 140, 49, 255])),
+            }
+        }
+    }
+
+    colors
 }

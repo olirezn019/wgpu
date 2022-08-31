@@ -46,7 +46,7 @@ pub trait Example: 'static + Sized {
         //wgpu::Limits::downlevel_webgl2_defaults() // These downlevel limits will allow the code to run on all possible hardware
         let mut gpu_limits = wgpu::Limits::downlevel_webgl2_defaults() ;
         gpu_limits.max_storage_buffer_binding_size = 1024;
-        gpu_limits.max_storage_buffers_per_shader_stage = 1;
+        gpu_limits.max_storage_buffers_per_shader_stage = 2;
         gpu_limits
     }
     fn init(
