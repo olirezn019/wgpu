@@ -2,7 +2,7 @@
 mod framework;
 mod shapes;
 
-use shapes::{Object, Mesh, MeshType, TextureType};
+use shapes::{Batch, Mesh, MeshType, TextureType};
 use std::{borrow::Cow, f32::consts, future::Future, mem, pin::Pin, task, vec::Vec};
 use wgpu::util::DeviceExt;
 
@@ -74,7 +74,7 @@ impl framework::Example for Example {
         // Create the vertex and index buffers
         let vertex_size = mem::size_of::<shapes::Vertex>();
 
-        // Creat meshes
+        // Create meshes
         let mut cube = Mesh {
             m_type: MeshType::Cube,
             vertices: Vec::<shapes::Vertex>::new(),
@@ -118,10 +118,8 @@ impl framework::Example for Example {
             offset
         };
 
-        println!("{}", index_offset(MeshType::Sphere));
-
-        // Create objects which will be drawn to the scene
-        let cube1 = Object {
+        // Create batches from which the objects will be drawn on the screen
+        let cube1 = Batch {
             m_type: MeshType::Cube,
             texture: TextureType::Water,
             transform_m: vec![
@@ -137,7 +135,7 @@ impl framework::Example for Example {
                 )
             ]
         };
-        let cylinder1 = Object {
+        let cylinder1 = Batch {
             m_type: MeshType::Cylinder,
             texture: TextureType::Grass,
             transform_m: vec![
@@ -148,7 +146,7 @@ impl framework::Example for Example {
                 )
             ]
         };
-        let sphere1 = Object {
+        let sphere1 = Batch {
             m_type: MeshType::Sphere,
             texture: TextureType::Grass,
             transform_m: vec![
@@ -160,7 +158,7 @@ impl framework::Example for Example {
             ]
         };
 
-        let objects: Vec<&Object> = vec![&cube1, &sphere1, &cylinder1];
+        let objects: Vec<&Batch> = vec![&cube1, &sphere1, &cylinder1];
 
         // Create one big vertex and index buffer from meshes
         let (vertex_data, index_data) = shapes::merge_index_vertex_data(&meshes);
@@ -238,7 +236,7 @@ impl framework::Example for Example {
 
         // Create storage buffer with colors for individual objects
         let colors = shapes::get_object_colors(&objects);
-        let colros_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let colors_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Storage Buffer"),
             contents: bytemuck::cast_slice(&colors),
             usage: wgpu::BufferUsages::STORAGE,
@@ -286,7 +284,7 @@ impl framework::Example for Example {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: colros_buf.as_entire_binding(),
+                    resource: colors_buf.as_entire_binding(),
                 },
             ],
             label: None,

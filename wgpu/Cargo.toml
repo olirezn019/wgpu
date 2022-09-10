@@ -122,6 +122,7 @@ raw-window-handle = "0.5"
 serde = { version = "1", features = ["derive"], optional = true }
 smallvec = "1"
 genmesh = "0.6.2"
+image = "0.24.3"
 
 [dev-dependencies]
 bitflags = "1"

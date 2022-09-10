@@ -46,9 +46,12 @@ impl Mesh {
     }
 }
 
+// Batch is a pair of mesh and texture.
+// The number of objects we want to draw from this batch
+// is defined with number of transform matrices in transform_m vector
 #[repr(C)]
 #[derive(Debug)]
-pub struct Object {
+pub struct Batch {
     pub m_type: MeshType,
     pub texture: TextureType,
     pub transform_m: Vec<glam::Mat4>
@@ -81,7 +84,7 @@ pub fn merge_index_vertex_data(meshes: &Vec<&Mesh>) -> (Vec<Vertex>, Vec<u16>) {
     (vertices, indices)
 }
 
-pub fn merge_matrices(objects: &Vec<&Object>) -> Vec<f32> {
+pub fn merge_matrices(objects: &Vec<&Batch>) -> Vec<f32> {
     let mut matrices: Vec<f32> = Vec::<f32>::new();
 
     for o in objects {
@@ -95,7 +98,7 @@ pub fn merge_matrices(objects: &Vec<&Object>) -> Vec<f32> {
     matrices
 }
 
-pub fn get_object_colors(objects: &Vec<&Object>) -> Vec<f32> {
+pub fn get_object_colors(objects: &Vec<&Batch>) -> Vec<f32> {
     let mut colors: Vec<f32> = Vec::<f32>::new();
 
     for o in objects {
